@@ -1,0 +1,6 @@
+[submodule "overlay/third_party/imgui"]
+	path = overlay/third_party/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "overlay/third_party/minhook"]
+	path = overlay/third_party/minhook
+	url = https://github.com/TsudaKageyu/minhook.git

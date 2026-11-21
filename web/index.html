@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETS2 Bakım Simülatörü</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='9' width='18' height='13' rx='2' fill='%232a78d6'/%3E%3Cpath d='M20 13h5l4 5v4h-9z' fill='%232a78d6'/%3E%3Ccircle cx='8' cy='24' r='3' fill='%23333'/%3E%3Ccircle cx='24' cy='24' r='3' fill='%23333'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><b id="h-truck">ETS2 Bakım Simülatörü</b><span id="h-plate">—</span></div>
+  <div class="hstat"><small>Kilometre</small><span><span data-v="truck.odometer" data-d="0" data-g="1" data-u="km"></span></span></div>
+  <div class="hstat"><small>Oyun saati</small><span data-v="status.time"></span></div>
+  <div class="hstat"><small>Konum</small><span id="h-loc">—</span></div>
+  <div class="hstat"><small>Dış hava</small><span><span data-v="location.ambient" data-d="1" data-u="°C"></span></span></div>
+  <div class="hstat"><small>Bakım gideri</small><span><span data-v="costs_total" data-d="0" data-g="1" data-cur="1"></span></span></div>
+  <div class="spacer"></div>
+  <span class="chip drive" id="h-drive" title="" hidden><span class="dot"></span><span id="h-drive-txt" class="no-i18n">—</span></span>
+  <span class="chip mode" id="h-mode" title=""><span class="dot"></span><span id="h-mode-txt">—</span></span>
+  <span class="chip" id="h-chip"><span class="dot"></span><span id="h-src">Bağlanıyor…</span></span>
+  <select id="lang-sel" class="iconbtn" title="Dil / Language / Sprache"><option value="tr">TR</option><option value="en">EN</option><option value="de">DE</option></select>
+  <button class="iconbtn" id="theme-btn" title="Tema">◐</button>
+</header>
+
+<div id="alerts"></div>
+
+<div id="app" hidden>
+<nav id="tabs">
+  <button data-tab="ozet" class="on">Gösterge</button>
+  <button data-tab="yag">Yağ</button>
+  <button data-tab="sogutma">Soğutma</button>
+  <button data-tab="aku">Akü &amp; Elektrik</button>
+  <button data-tab="lastik">Lastik &amp; Yakıt</button>
+  <button data-tab="motor">Motor Analizi</button>
+  <button data-tab="yolculuk">Yolculuk &amp; Sürüş</button>
+  <button data-tab="servis">Servis &amp; Arızalar<span class="badge" id="fault-badge" hidden></span></button>
+  <button data-tab="ayar">Ayarlar</button>
+</nav>
+<div id="waiting" class="card" hidden>
+  <h3>Oyun bekleniyor</h3>
+  <p id="wait-text" class="note"></p>
+  <ol class="note">
+    <li id="wait-step1">EKLENTI_KUR.bat dosyasını bir kez çalıştırın (telemetri eklentisini ETS2 klasörüne kurar).</li>
+    <li>Euro Truck Simulator 2'yi başlatın ve açılıştaki “Advanced SDK features” uyarısını OK ile onaylayın.</li>
+    <li>Profilinizi yükleyip kamyona binin; bu pencere otomatik olarak bağlanır.</li>
+  </ol>
+  <p class="note small" id="wait-demo">Oyun olmadan denemek için DEMO.bat dosyasını çalıştırın. Ayarlar sekmesi oyun beklenirken de kullanılabilir.</p>
+</div>
+<main>
+
+<!-- ============================ GÖSTERGE ============================ -->
+<section class="tab on" id="tab-ozet">
+  <div class="grid">
+    <div class="card tile"><div class="label">Devir</div>
+      <div class="value"><span data-v="live.rpm" data-g="1"></span><small>rpm</small></div>
+      <div class="sub"><span>Yük</span> <span data-v="live.load" data-pct="1"></span> · <span>Vites</span> <span data-v="live.gear"></span></div></div>
+    <div class="card tile"><div class="label">Motor gücü / tork</div>
+      <div class="value"><span data-v="live.power_kw"></span><small>kW</small></div>
+      <div class="sub"><span data-v="live.torque_nm" data-g="1" data-u="Nm"></span></div></div>
+    <div class="card tile"><div class="label">Anlık tüketim</div>
+      <div class="value"><span data-v="live.fuel_lph" data-d="1"></span><small>L/h</small></div>
+      <div class="sub"><span data-v="live.l100" data-d="1" data-n="—" data-u="L/100 km"></span></div></div>
+    <div class="card tile"><div class="label">Soğutma suyu</div>
+      <div class="value"><span data-v="thermal.t_cool" data-d="0"></span><small>°C</small></div>
+      <div class="sub"><span data-s="coolTemp"></span> · <span>termostat</span> <span data-v="thermal.thermostat" data-pct="1"></span></div>
+      <div class="meter" data-m="thermal.t_cool" data-min="40" data-max="125" data-st="coolTemp"><i></i></div></div>
+    <div class="card tile"><div class="label">Yağ sıcaklığı</div>
+      <div class="value"><span data-v="thermal.t_oil" data-d="0"></span><small>°C</small></div>
+      <div class="sub"><span data-s="oilTemp"></span> · <span data-v="oil.visc_now" data-g="1" data-u="cSt"></span></div>
+      <div class="meter" data-m="thermal.t_oil" data-min="40" data-max="150" data-st="oilTemp"><i></i></div></div>
+    <div class="card tile"><div class="label">Yağ basıncı</div>
+      <div class="value"><span data-v="oil.pressure" data-d="1"></span><small>bar</small></div>
+      <div class="sub"><span data-s="oilPress"></span> · <span>alt sınır</span> <span data-v="oil.low_thr" data-d="1" data-u="bar"></span></div>
+      <div class="meter" data-m="oil.pressure" data-min="0" data-max="6" data-st="oilPress"><i></i></div></div>
+    <div class="card tile"><div class="label">Akü voltajı</div>
+      <div class="value"><span data-v="battery.voltage" data-d="1"></span><small>V</small></div>
+      <div class="sub"><span data-s="volt"></span> · <span data-v="battery.current" data-d="0" data-sign="1" data-u="A"></span></div></div>
+    <div class="card tile"><div class="label">Fren sıcaklığı</div>
+      <div class="value"><span data-v="live.brake_temp"></span><small>°C</small></div>
+      <div class="sub"><span data-s="brake"></span> · <span>hava</span> <span data-v="live.air_bar" data-d="1" data-u="bar"></span></div>
+      <div class="meter" data-m="live.brake_temp" data-min="0" data-max="600" data-st="brake"><i></i></div></div>
+  </div>
+
+  <h2 class="sec">Bakım durumu</h2>
+  <div class="grid">
+    <div class="card tile"><div class="label">Yağ ömrü</div>
+      <div class="value"><span data-v="oil.life" data-pct="1"></span></div>
+      <div class="sub"><span data-s="life"></span> · <span data-v="oil.limiting"></span></div>
+      <div class="meter" data-m="oil.life" data-max="100" data-st="life"><i></i></div></div>
+    <div class="card tile"><div class="label">Yağ seviyesi</div>
+      <div class="value"><span data-v="oil.volume" data-d="1"></span><small>/ <span data-v="oil.capacity"></span> L</small></div>
+      <div class="sub"><span data-s="oilLevel"></span> · <span data-v="oil.level_pct" data-pct="1"></span></div>
+      <div class="meter" data-m="oil.level_pct" data-max="110" data-st="oilLevel"><i></i><span class="mark" style="left:77.3%"></span><span class="mark" style="left:90.9%"></span></div></div>
+    <div class="card tile"><div class="label">Antifriz koruması</div>
+      <div class="value"><span data-v="coolant.freeze" data-sign="1"></span><small>°C</small></div>
+      <div class="sub"><span data-s="freeze"></span> · <span>beklenen en düşük</span> <span data-v="location.expected_min" data-u="°C"></span></div></div>
+    <div class="card tile"><div class="label">Soğutma suyu seviyesi</div>
+      <div class="value"><span data-v="coolant.level_pct" data-pct="1"></span></div>
+      <div class="sub"><span data-s="coolLevel"></span> · <span data-v="coolant.volume" data-d="1" data-u="L"></span></div>
+      <div class="meter" data-m="coolant.level_pct" data-max="100" data-st="coolLevel"><i></i></div></div>
+    <div class="card tile"><div class="label">Akü şarjı / sağlığı</div>
+      <div class="value"><span data-v="battery.soc" data-pct="1"></span><small>/ <span data-v="battery.soh" data-pct="1"></span></small></div>
+      <div class="sub"><span data-s="soc"></span> · <span>marş</span> <span data-v="battery.crank_v" data-d="1" data-u="V"></span></div>
+      <div class="meter" data-m="battery.soc" data-max="100" data-st="soc"><i></i></div></div>
+    <div class="card tile"><div class="label">DPF doluluğu</div>
+      <div class="value"><span data-v="dpf.soot" data-pct="1"></span></div>
+      <div class="sub"><span data-s="dpf"></span> · <span>kül</span> <span data-v="dpf.ash" data-pct="1"></span></div>
+      <div class="meter" data-m="dpf.soot" data-max="130" data-st="dpf"><i></i></div></div>
+    <div class="card tile"><div class="label">Motor sağlığı</div>
+      <div class="value"><span data-v="engine.health" data-d="1" data-pct="1"></span></div>
+      <div class="sub"><span data-s="health"></span> · <span>aşınma hızı</span> x<span data-v="engine.wear_rate" data-d="2"></span></div>
+      <div class="meter" data-m="engine.health" data-max="100" data-st="health"><i></i></div></div>
+    <div class="card tile"><div class="label">Yakıt</div>
+      <div class="value"><span data-v="fuel.pct" data-pct="1"></span></div>
+      <div class="sub"><span data-s="fuel"></span> · <span>menzil</span> <span data-v="fuel.range_km" data-g="1" data-n="—" data-u="km"></span></div>
+      <div class="meter" data-m="fuel.pct" data-max="100" data-st="fuel"><i></i></div></div>
+    <div class="card tile adblue-only"><div class="label">AdBlue</div>
+      <div class="value"><span data-v="adblue.pct" data-pct="1"></span></div>
+      <div class="sub"><span data-s="adblue"></span> · <span data-v="adblue.l" data-d="1" data-u="L"></span></div>
+      <div class="meter" data-m="adblue.pct" data-max="100" data-st="adblue"><i></i></div></div>
+    <div class="card tile"><div class="label">Lastikler</div>
+      <div class="value"><span data-v="tires.min_tread" data-d="1"></span><small>mm</small></div>
+      <div class="sub"><span data-s="tire"></span> · <span>en düşük basınç</span> <span data-v="tires.min_pressure_pct" data-pct="1"></span></div></div>
+    <div class="card tile"><div class="label">Debriyaj / şanzıman</div>
+      <div class="value"><span data-v="trans.clutch_wear" data-pct="1"></span><small>aşınmış</small></div>
+      <div class="sub"><span data-s="gear"></span> · <span>şanzıman yağı</span> <span data-v="trans.t_oil" data-u="°C"></span></div>
+      <div class="meter" data-m="trans.clutch_wear" data-max="100" data-st="clutch"><i></i></div></div>
+  </div>
+
+  <h2 class="sec">Son 30 dakika</h2>
+  <div class="grid wide">
+    <div class="card chart" id="ch-temp"></div>
+    <div class="card chart" id="ch-press"></div>
+    <div class="card chart" id="ch-volt"></div>
+    <div class="card chart" id="ch-rpm"></div>
+  </div>
+</section>
+
+<!-- ============================ YAĞ ============================ -->
+<section class="tab" id="tab-yag">
+  <div class="cols">
+    <div class="card">
+      <h3><span>Motor yağı</span> <span class="h-sub" data-v="oil.grade_name"></span> <span class="rate-tag no-i18n" data-rate-tag="oil" hidden></span></h3>
+      <div style="display:flex;gap:24px;align-items:flex-end;margin-bottom:10px">
+        <div><div class="note small">Kalan ömür</div><div class="hero"><span data-v="oil.life" data-pct="1"></span></div></div>
+        <div class="note"><span>Sınırlayan</span>: <b data-v="oil.limiting"></b><br><span data-s="life"></span></div>
+      </div>
+      <table class="kv">
+        <tr><td>Bu yağla gidilen</td><td><span data-v="oil.km" data-g="1"></span> / <span data-v="oil.interval_km" data-g="1" data-u="km" data-n="∞"></span></td></tr>
+        <tr><td>Motor saati (bu yağla)</td><td><span data-v="oil.hours" data-u="sa"></span></td></tr>
+        <tr><td>Seviye</td><td><span data-v="oil.volume" data-d="1" data-u="L"></span> · <span data-v="oil.level_pct" data-pct="1"></span> · MIN <span data-v="oil.min_pct" data-pct="1"></span></td></tr>
+        <tr><td>Basınç (şu an)</td><td><span data-v="oil.pressure" data-d="2" data-u="bar"></span></td></tr>
+        <tr><td>Viskozite şu an / 100 °C</td><td><span data-v="oil.visc_now" data-g="1"></span> / <span data-v="oil.visc100" data-d="1" data-u="cSt"></span> · <span data-v="oil.visc_chg" data-d="1" data-sign="1" data-pct="1"></span></td></tr>
+        <tr><td>Yağ filtresi doluluğu</td><td><span data-v="oil.filter_pct" data-pct="1"></span></td></tr>
+        <tr><td>Bu yağla tüketim</td><td><span data-v="oil.consumed" data-d="1" data-u="L"></span> · <span data-v="oil.consumption_l_1000" data-d="2" data-n="—" data-u="L/1000 km"></span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Ömrü belirleyen ölçütler</h3>
+      <div class="breakdown" id="oil-breakdown"></div>
+      <p class="note small">Yağ, en kötü ölçütü sıfıra indiğinde ömrünü doldurur. Rölanti, kısa mesafe, soğuk motora yüklenme ve yüksek sıcaklık ömrü kısaltır.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3><span>Servis işlemleri</span> <span class="h-sub">kamyon durmuş ve motor kapalı olmalı</span></h3>
+    <div class="actions">
+      <b style="min-width:120px">Yağ değişimi</b>
+      <select id="oc-grade" class="grade-sel"></select>
+      <label class="chk"><input type="checkbox" id="oc-filter" checked> <span>Filtre de değişsin</span></label>
+      <button class="btn" data-act="oil_change">Yağı değiştir</button>
+    </div>
+    <div class="actions">
+      <b style="min-width:120px">Yağ ekle</b>
+      <select id="ot-grade" class="grade-sel"></select>
+      <input type="number" id="ot-l" value="2" min="0.5" max="20" step="0.5"> L
+      <button class="btn ghost" data-act="oil_topup">Ekle</button>
+      <button class="btn ghost" data-act="oil_filter">Sadece filtre değiştir</button>
+      <button class="btn ghost" data-act="oil_sample">Yağ numunesi al (analiz)</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px" id="lab-card">
+    <h3><span>Yağ analizi raporu</span> <span class="h-sub" id="lab-meta"></span></h3>
+    <div id="lab-body" class="empty">Henüz analiz yok. “Yağ numunesi al” ile laboratuvar raporu alın.</div>
+  </div>
+</section>
+
+<!-- ============================ SOĞUTMA ============================ -->
+<section class="tab" id="tab-sogutma">
+  <div class="grid">
+    <div class="card tile"><div class="label">Soğutma suyu</div><div class="value"><span data-v="thermal.t_cool" data-d="1"></span><small>°C</small></div><div class="sub"><span data-s="coolTemp"></span></div></div>
+    <div class="card tile"><div class="label">Termostat</div><div class="value"><span data-v="thermal.thermostat" data-pct="1"></span></div><div class="sub">83 °C açar, 95 °C tam açık</div></div>
+    <div class="card tile"><div class="label">Fan</div><div class="value" data-v="thermal.fan" data-b="Devrede|Kapalı"></div><div class="sub">95 °C'de ve retarderde devreye girer</div></div>
+    <div class="card tile"><div class="label">Sistem basıncı</div><div class="value"><span data-v="thermal.pressure" data-d="2"></span><small>bar</small></div><div class="sub"><span>kaynama noktası</span> <span data-v="thermal.boil_point" data-u="°C"></span></div></div>
+    <div class="card tile"><div class="label">Donma noktası</div><div class="value"><span data-v="coolant.freeze" data-sign="1"></span><small>°C</small></div><div class="sub"><span data-s="freeze"></span></div></div>
+    <div class="card tile"><div class="label">Buzlanma</div><div class="value"><span data-v="thermal.block_ice" data-pct="1"></span></div><div class="sub"><span>blok · radyatör</span> <span data-v="thermal.rad_ice" data-pct="1"></span></div></div>
+  </div>
+  <div class="cols" style="margin-top:12px">
+    <div class="card">
+      <h3><span>Soğutma sıvısı</span> <span class="h-sub" data-v="coolant.type_name"></span> <span class="rate-tag no-i18n" data-rate-tag="coolant" hidden></span></h3>
+      <table class="kv">
+        <tr><td>Seviye</td><td><span data-v="coolant.volume" data-d="1"></span> / <span data-v="coolant.capacity" data-u="L"></span> · <span data-v="coolant.level_pct" data-pct="1"></span> <span data-s="coolLevel"></span></td></tr>
+        <tr><td>Antifriz oranı (glikol)</td><td><span data-v="coolant.glycol" data-pct="1"></span></td></tr>
+        <tr><td>pH</td><td><span data-v="coolant.ph" data-d="2"></span></td></tr>
+        <tr><td>Korozyon inhibitörü</td><td><span data-v="coolant.inhibitor" data-pct="1"></span> <span data-s="inhibitor"></span></td></tr>
+        <tr><td>Kireç / korozyon birikimi</td><td><span data-v="coolant.scale" data-pct="1"></span></td></tr>
+        <tr><td>Yaşı</td><td><span data-v="coolant.age_days"></span> / <span data-v="coolant.life_days" data-u="gün" data-n="∞"></span> · <span data-v="coolant.km" data-g="1"></span> / <span data-v="coolant.life_km" data-g="1" data-u="km" data-n="∞"></span></td></tr>
+        <tr><td>Bölgede beklenen en düşük sıcaklık</td><td><span data-v="location.expected_min" data-u="°C"></span></td></tr>
+      </table>
+      <p class="note small">%50 antifriz −37 °C'ye kadar korur. Saf su eklemek oranı düşürür, musluk suyu kireç yapar. Antifrizsiz su donunca blok ve radyatör çatlar.</p>
+    </div>
+    <div class="card">
+      <h3>Servis işlemleri</h3>
+      <div class="actions">
+        <b style="min-width:110px">Sıvı değişimi</b>
+        <select id="cc-type" class="ctype-sel"></select>
+        <select id="cc-conc"><option value="0.4">40% (−24 °C)</option><option value="0.5" selected>50% (−37 °C)</option><option value="0.6">60% (−52 °C)</option></select>
+        <button class="btn" data-act="coolant_change">Değiştir</button>
+      </div>
+      <div class="actions">
+        <b style="min-width:110px">Tamamla</b>
+        <select id="ct-fluid" class="fluid-sel"></select>
+        <input type="number" id="ct-l" value="5" min="0.5" max="80" step="0.5"> L
+        <button class="btn ghost" data-act="coolant_topup">Ekle</button>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" data-act="coolant_test">Refraktometre ile ölç</button>
+      </div>
+      <div id="cool-test" class="note" style="margin-top:8px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ AKÜ ============================ -->
+<section class="tab" id="tab-aku">
+  <div class="grid">
+    <div class="card tile"><div class="label">Voltaj</div><div class="value"><span data-v="battery.voltage" data-d="2"></span><small>V</small></div><div class="sub"><span data-s="volt"></span></div></div>
+    <div class="card tile"><div class="label">Akü akımı</div><div class="value"><span data-v="battery.current" data-d="1" data-sign="1"></span><small>A</small></div><div class="sub">+ şarj · − deşarj</div></div>
+    <div class="card tile"><div class="label">Elektrik yükü</div><div class="value"><span data-v="battery.load_a" data-d="1"></span><small>A</small></div><div class="sub"><span>alternatör</span> <span data-v="battery.alt_a" data-u="A"></span> · <span data-v="battery.wiper"></span></div></div>
+    <div class="card tile"><div class="label">Şarj durumu</div><div class="value"><span data-v="battery.soc" data-pct="1"></span></div><div class="sub"><span data-s="soc"></span></div><div class="meter" data-m="battery.soc" data-max="100" data-st="soc"><i></i></div></div>
+    <div class="card tile"><div class="label">Akü sağlığı</div><div class="value"><span data-v="battery.soh" data-pct="1"></span></div><div class="sub"><span data-s="soh"></span> · <span>sülfat</span> <span data-v="battery.sulfation" data-d="1" data-pct="1"></span></div><div class="meter" data-m="battery.soh" data-max="100" data-st="soh"><i></i></div></div>
+    <div class="card tile"><div class="label">Tahmini marş voltajı</div><div class="value"><span data-v="battery.crank_v" data-d="1"></span><small>V</small></div><div class="sub"><span>gereken en az şarj</span> <span data-v="battery.min_start_soc" data-pct="1" data-n="—"></span></div></div>
+  </div>
+  <div class="cols" style="margin-top:12px">
+    <div class="card">
+      <h3><span>Akü grubu</span> <span class="h-sub" data-v="battery.system"></span> <span class="rate-tag no-i18n" data-rate-tag="battery" hidden></span> <span class="rate-tag no-i18n" data-rate-tag="drain" hidden></span></h3>
+      <table class="kv">
+        <tr><td>Kapasite / kullanılabilir</td><td><span data-v="battery.capacity" data-u="Ah"></span> / <span data-v="battery.usable_ah" data-u="Ah"></span></td></tr>
+        <tr><td>Akü tipi</td><td><span data-v="battery.kind_name"></span></td></tr>
+        <tr><td>Akü sıcaklığı</td><td><span data-v="battery.temp" data-u="°C"></span></td></tr>
+        <tr><td>Elektrolit donma noktası</td><td><span data-v="battery.freeze" data-u="°C"></span></td></tr>
+        <tr><td>Eşdeğer tam döngü</td><td><span data-v="battery.efc" data-d="1"></span></td></tr>
+        <tr><td>%50'ye kalan süre (bu yükle)</td><td><span data-v="battery.hours_to_50" data-d="1" data-n="—" data-u="sa"></span></td></tr>
+        <tr><td>Ön ısıtma (kızdırma)</td><td><span data-v="preheat.text"></span></td></tr>
+        <tr><td>Şarj cihazı / takviye</td><td><span data-v="battery.charger" data-b="Bağlı|Yok"></span> / <span data-v="battery.jump" data-b="Bağlı|Yok"></span></td></tr>
+      </table>
+      <p class="note small">Kontak açıkken ~9 A, kısa farlar +6 A, tavan lambaları +5 A çekilir. Uykuda park ısıtıcısı/kliması da aküden beslenir. Soğukta yağ koyulaşır, marş akımı artar ve akü iç direnci yükselir.</p>
+    </div>
+    <div class="card">
+      <h3>Servis işlemleri</h3>
+      <div class="actions">
+        <button class="btn ghost" data-act="battery_test">Akü testi yap</button>
+        <button class="btn ghost" id="charger-btn">Şarj cihazı bağla</button>
+        <button class="btn ghost" data-act="jump_start">Takviye kablosu bağla</button>
+      </div>
+      <div class="actions">
+        <b>Akü değişimi</b>
+        <select id="br-ah"></select>
+        <select id="br-kind"></select>
+        <span class="note" id="br-price"></span>
+        <button class="btn" data-act="battery_replace">Aküleri değiştir</button>
+      </div>
+      <div id="batt-test" class="note" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="grid wide" style="margin-top:12px">
+    <div class="card chart" id="ch-volt2"></div>
+    <div class="card chart" id="ch-soc"></div>
+    <div class="card chart" id="ch-amp"></div>
+  </div>
+</section>
+
+<!-- ============================ LASTİK & YAKIT ============================ -->
+<section class="tab" id="tab-lastik">
+  <div class="card">
+    <h3><span>Lastikler</span> <span class="h-sub">diş derinliği · ayar / şu anki basınç · sıcaklık</span> <span class="rate-tag no-i18n" data-rate-tag="tires" hidden></span></h3>
+    <table class="data"><thead><tr><th>Dingil</th><th class="num">Diş</th><th class="num">Basınç (ayar / şu an)</th><th class="num">Sıcaklık</th><th class="num">Bu lastiklerle</th><th>Durum</th></tr></thead><tbody id="tire-body"></tbody></table>
+    <table class="kv" style="margin-top:6px"><tr><td>Oyundaki tekerlek hasarı</td><td><span data-v="tires.game_wear" data-d="1" data-pct="1"></span></td></tr></table>
+    <p class="note small">Yasal en az diş derinliği 1,6 mm; ön lastikler 4 mm'de, arka lastikler 3 mm'de değiştirilmeli. Basınç soğuk lastikte ayarlanır (ön 9,0 bar, arka 8,5 bar); sıcak lastikte ~%10 yükselir. Düşük basınç lastiği ısıtır, omuzlarından aşındırır ve patlama riskini artırır. Toprak/çakıl yolda aşınma 2 kat, patlak 3 kat artar. Oyunda serviste tekerlek hasarı onarılınca lastikler de yenilenir.</p>
+    <div class="actions">
+      <button class="btn ghost" data-act="tire_inflate">Basınçları ayarla</button>
+      <button class="btn ghost" data-act="tire_puncture">Patlağı tamir et</button>
+      <b>Lastik değişimi</b>
+      <select id="tr-axle"></select>
+      <select id="tr-tier"></select>
+      <span class="note" id="tr-price"></span>
+      <button class="btn" data-act="tire_replace">Lastikleri değiştir</button>
+    </div>
+  </div>
+  <div class="cols" style="margin-top:12px">
+    <div class="card">
+      <h3>Yakıt</h3>
+      <table class="kv">
+        <tr><td>Depo</td><td><span data-v="fuel.l" data-g="1"></span> / <span data-v="fuel.cap" data-g="1" data-u="L"></span> · <span data-v="fuel.pct" data-pct="1"></span></td></tr>
+        <tr><td>Durum</td><td><span data-s="fuel"></span></td></tr>
+        <tr><td>Menzil (ölçülen tüketimle)</td><td><span data-v="fuel.range_km" data-g="1" data-n="—" data-u="km"></span></td></tr>
+        <tr><td>Uzun dönem ortalama</td><td><span data-v="fuel.l100_avg" data-d="1" data-n="—" data-u="L/100 km"></span></td></tr>
+        <tr><td>Anlık tüketim</td><td><span data-v="live.fuel_lph" data-d="1" data-u="L/h"></span></td></tr>
+      </table>
+      <div class="meter" data-m="fuel.pct" data-max="100" data-st="fuel" style="margin-top:8px"><i></i></div>
+    </div>
+    <div class="card adblue-only">
+      <h3><span>AdBlue</span> <span class="h-sub">SCR katalizörü için %32,5 üre</span> <span class="rate-tag no-i18n" data-rate-tag="adblue" hidden></span></h3>
+      <table class="kv">
+        <tr><td>Depo</td><td><span data-v="adblue.l" data-d="1"></span> / <span data-v="adblue.cap" data-u="L"></span> · <span data-v="adblue.pct" data-pct="1"></span></td></tr>
+        <tr><td>Durum</td><td><span data-s="adblue"></span></td></tr>
+        <tr><td>Püskürtme (yakıta oranla)</td><td><span data-v="adblue.rate_pct" data-d="1" data-pct="1"></span></td></tr>
+        <tr><td>Menzil</td><td><span data-v="adblue.range_km" data-g="1" data-n="—" data-u="km"></span></td></tr>
+        <tr><td>Toplam kullanılan</td><td><span data-v="adblue.used_l" data-d="1" data-u="L"></span></td></tr>
+      </table>
+      <div class="meter" data-m="adblue.pct" data-max="100" data-st="adblue" style="margin-top:8px"><i></i></div>
+      <p class="note small">Oyun AdBlue'yu harcamaz; tüketimi simülatör hesaplar (yakıtın ~%3–7'si, yük arttıkça daha çok). Oyunda yakıt alınca AdBlue da tamamlanır (Ayarlar). Depo boşalınca gerçek araçta motor gücü düşer ve yeniden çalıştırmada hız 20 km/h ile sınırlanır. AdBlue −11 °C'de donar.</p>
+      <div class="actions"><button class="btn ghost" data-act="adblue_fill">AdBlue tamamla</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ MOTOR ============================ -->
+<section class="tab" id="tab-motor">
+  <div class="card" style="margin-bottom:12px">
+    <h3>Arıza tespiti</h3>
+    <div class="diag">
+      <div><div class="note small">Motor bilgileri</div><div id="dg-specs"></div></div>
+      <div><div class="note small">Parça durumu</div><div id="dg-parts"></div></div>
+      <div><div class="note small">Seviyeler</div><div id="dg-levels"></div></div>
+    </div>
+    <p class="note small">Parça yüzdesi, parçanın yaşına göre arıza yapmadan çalışma olasılığıdır: yeni parça %100, ortalama ömründe yaklaşık %40; arızalı parça %0. Yüzdesi düşen parçayı arıza çıkmadan “Değiştir” ile yenileyebilirsiniz (ücret, Servis sekmesindeki onarımla aynı). Yağ, soğutma suyu, akü, DPF ve debriyaj kendi sekmelerinden yenilenir.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>Sürüş puanı</h3>
+      <div style="display:flex;gap:28px;align-items:flex-end">
+        <div><div class="note small">Bu oturum</div><div class="hero" id="m-score-s">—</div></div>
+        <div><div class="note small">Toplam</div><div style="font-size:32px;font-weight:600" id="m-score-t">—</div></div>
+      </div>
+      <p class="note small">Eko bant (1000–1500 rpm), rölanti oranı, sert fren, lugging, aşırı devir, soğuk motora yüklenme ve hararetten hesaplanır.</p>
+      <table class="data" id="m-stats"></table>
+    </div>
+    <div class="card">
+      <h3><span>Devir x yük haritası</span> <span class="h-sub">motorun hangi bölgede çalıştığı (dakika)</span></h3>
+      <div class="actions" style="margin:0 0 6px"><label class="chk"><input type="radio" name="heat-src" value="session" checked> <span>Bu oturum</span></label><label class="chk"><input type="radio" name="heat-src" value="analysis"> <span>Toplam</span></label></div>
+      <div class="chart heat" id="ch-heat"></div>
+      <h3 style="margin-top:16px"><span>DPF (partikül filtresi)</span> <span class="rate-tag no-i18n" data-rate-tag="dpf" hidden></span></h3>
+      <table class="kv">
+        <tr><td>İs doluluğu</td><td><span data-v="dpf.soot" data-pct="1"></span> <span data-s="dpf"></span></td></tr>
+        <tr><td>Kül doluluğu</td><td><span data-v="dpf.ash" data-pct="1"></span> <span data-s="ash"></span></td></tr>
+        <tr><td>Rejenerasyon</td><td><span id="m-regen">—</span></td></tr>
+        <tr><td>Rejenerasyon sayısı / son rejenden beri</td><td><span data-v="dpf.count"></span> / <span data-v="dpf.km_since" data-g="1" data-u="km"></span></td></tr>
+        <tr><td>Egzoz karşı basıncı</td><td><span data-v="dpf.backpressure" data-u="kPa"></span></td></tr>
+      </table>
+      <div class="actions"><button class="btn ghost" data-act="dpf_regen">Servis rejenerasyonu</button><button class="btn ghost" data-act="dpf_clean">DPF kül temizliği</button></div>
+    </div>
+  </div>
+  <div class="cols" style="margin-top:12px">
+    <div class="card">
+      <h3><span>Motor sağlığı</span> <span class="rate-tag no-i18n" data-rate-tag="engine" hidden></span></h3>
+      <table class="kv">
+        <tr><td>Simülasyon motor sağlığı</td><td><span data-v="engine.health" data-d="1" data-pct="1"></span> <span data-s="health"></span></td></tr>
+        <tr><td>Son dönem aşınma hızı</td><td>x<span data-v="engine.wear_rate" data-d="2"></span></td></tr>
+        <tr><td>Conta zorlanması / kilitlenme riski</td><td><span data-v="engine.hg_stress" data-pct="1"></span> / <span data-v="engine.seize_stress" data-pct="1"></span></td></tr>
+        <tr><td>Oyun hasarı: motor / şanzıman</td><td><span data-v="engine.game_wear.engine" data-d="1" data-pct="1"></span> / <span data-v="engine.game_wear.transmission" data-d="1" data-pct="1"></span></td></tr>
+        <tr><td>Oyun hasarı: kabin / şasi / tekerlek</td><td><span data-v="engine.game_wear.cabin" data-d="1" data-pct="1"></span> / <span data-v="engine.game_wear.chassis" data-d="1" data-pct="1"></span> / <span data-v="engine.game_wear.wheels" data-d="1" data-pct="1"></span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3><span>Motor tanımı</span> <span class="h-sub" data-v="truck.spec.name"></span></h3>
+      <table class="kv">
+        <tr><td>Model / seçim</td><td><span data-v="engine_db.model_name" data-n="—"></span> · <span data-v="engine_db.mode" data-b2="auto:otomatik|manual:elle"></span></td></tr>
+        <tr><td>Güç</td><td><span id="m-hp">—</span> hp @ <span data-v="truck.spec.rated_rpm" data-u="rpm"></span></td></tr>
+        <tr><td>Tepe tork</td><td><span data-v="engine_db.torque" data-g="1" data-u="Nm"></span></td></tr>
+        <tr><td>Hacim</td><td><span data-v="truck.spec.displacement_l" data-d="1" data-u="L"></span></td></tr>
+        <tr><td>Yağ / soğutma suyu kapasitesi</td><td><span data-v="truck.spec.oil_capacity_l" data-u="L"></span> / <span data-v="truck.spec.coolant_capacity_l" data-u="L"></span></td></tr>
+        <tr><td>Toplam kütle (tahmini)</td><td><span data-v="live.mass_t" data-d="1" data-u="t"></span></td></tr>
+      </table>
+      <p class="note small">Motor otomatik seçilir; Ayarlar sekmesinden değiştirebilirsiniz.</p>
+    </div>
+  </div>
+  <div class="cols" style="margin-top:12px">
+    <div class="card">
+      <h3><span>Şanzıman ve debriyaj</span> <span class="rate-tag no-i18n" data-rate-tag="transmission" hidden></span></h3>
+      <table class="kv">
+        <tr><td>Şanzıman yağı sıcaklığı</td><td><span data-v="trans.t_oil" data-u="°C"></span> <span data-s="gbox"></span></td></tr>
+        <tr><td>Yağ soğutma</td><td><span data-v="trans.retarder" data-b="yağ-su eşanjörü (retarderli)|gövde ve hava akışı (retarder yok)"></span></td></tr>
+        <tr><td>Şanzıman yağı (gidilen / aralık)</td><td><span data-v="trans.oil_km" data-g="1"></span> / <span data-v="trans.oil_interval_km" data-g="1" data-u="km" data-n="∞"></span> <span data-s="gboil"></span></td></tr>
+        <tr><td>Debriyaj sıcaklığı / anlık kayma</td><td><span data-v="trans.t_clutch" data-u="°C"></span> <span data-s="clutchT"></span> · <span data-v="trans.slip_kw" data-u="kW"></span></td></tr>
+        <tr><td>Debriyaj balatası aşınması</td><td><span data-v="trans.clutch_wear" data-pct="1"></span> <span data-s="clutch"></span></td></tr>
+        <tr><td>Tahmini kalan debriyaj ömrü</td><td><span data-v="trans.clutch_left_km" data-g="1" data-u="km" data-n="—"></span></td></tr>
+        <tr><td>Oyun hasarı: şanzıman</td><td><span data-v="trans.game_wear" data-d="1" data-pct="1"></span></td></tr>
+      </table>
+      <div class="actions"><button class="btn ghost" data-act="gearbox_oil" data-confirm="gearbox_oil">Şanzıman yağını değiştir</button><button class="btn ghost" data-act="clutch_replace" data-confirm="clutch">Debriyajı yenile</button></div>
+      <p class="note small">Şanzıman yağı yokuşta tam yükte ve uzun retarder kullanımında ısınır (sarı 115 °C, kırmızı 130 °C). Debriyaj kalkışta, manevrada ve yarım debriyajla sürünürken ısınır (sarı 250 °C, kırmızı 320 °C); sıcak balata çok hızlı aşınır.</p>
+    </div>
+    <div class="card">
+      <h3>Direksiyon, fren ve park freni</h3>
+      <table class="kv">
+        <tr><td>Direksiyon desteği</td><td><span data-s="steer"></span></td></tr>
+        <tr class="hyd-only"><td>Direksiyon hidrolik yağı</td><td><span data-v="steering.fluid" data-pct="1"></span></td></tr>
+        <tr><td>ABS / ESC</td><td><span data-s="abs"></span></td></tr>
+        <tr><td>Park freni</td><td><span data-s="park"></span></td></tr>
+        <tr><td>Fren havası</td><td><span data-v="live.air_bar" data-d="1" data-u="bar"></span> <span data-s="air"></span></td></tr>
+      </table>
+      <p class="note small">Oyun içi katmanın alt ortasındaki ikaz lambaları yalnızca sarı ve kırmızıdır; ŞANZIMAN, DİREKSİYON, FREN, EL FRENİ, ABS ve MARŞ lambaları da bunlara dahildir. Hangi önem derecesinden itibaren yanacaklarını Ayarlar → Gösterilecek lambalar'dan seçebilirsiniz. Yeşil, mavi ve beyaz bilgi lambaları oyunun kendi göstergesinde görünür.</p>
+    </div>
+  </div>
+  <h2 class="sec">Uzun dönem trend</h2>
+  <div class="grid wide">
+    <div class="card chart" id="tr-health"></div>
+    <div class="card chart" id="tr-fe"></div>
+    <div class="card chart" id="tr-life"></div>
+    <div class="card chart" id="tr-soh"></div>
+  </div>
+</section>
+
+<!-- ============================ YOLCULUK & SÜRÜŞ ============================ -->
+<section class="tab" id="tab-yolculuk">
+  <div class="cols">
+    <div class="card">
+      <h3><span>Bu yolculuk</span> <span class="h-sub" id="trip-route">—</span></h3>
+      <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px">
+        <div><div class="note small">Mesafe</div><div class="tripv" id="trip-dist">—</div></div>
+        <div><div class="note small">Ortalama tüketim</div><div class="tripv" id="trip-l100">—</div></div>
+        <div><div class="note small">Sürüş puanı</div><div class="tripv" id="trip-score">—</div></div>
+      </div>
+      <table class="kv" id="trip-table"></table>
+      <div class="actions"><button class="btn ghost" data-act="trip_reset">Yolculuğu sıfırla</button>
+        <span class="note small">Yeni bir iş aldığınızda yolculuk kendiliğinden sıfırlanır.</span></div>
+    </div>
+    <div class="card">
+      <h3>Frenler</h3>
+      <table class="kv">
+        <tr><td>Fren sıcaklığı</td><td><span data-v="live.brake_temp" data-u="°C"></span> <span data-s="brake"></span></td></tr>
+        <tr><td>Hava basıncı</td><td><span data-v="live.air_bar" data-d="1" data-u="bar"></span></td></tr>
+        <tr><td>Fren enerjisi dağılımı (yolculuk)</td><td id="trip-split">—</td></tr>
+      </table>
+      <div class="splitbar" id="split-bar"></div>
+    </div>
+  </div>
+  <div class="grid wide" style="margin-top:12px">
+    <div class="card chart" id="ch-speed"></div>
+    <div class="card chart" id="ch-gears"></div>
+  </div>
+</section>
+
+<!-- ============================ SERVİS ============================ -->
+<section class="tab" id="tab-servis">
+  <div class="cols">
+    <div class="card">
+      <h3>Bakım planı (tahmini)</h3>
+      <table class="data" id="plan-table"></table>
+      <p class="note small"><span>Bakım gideri / 1000 km</span>: <b id="plan-cost">—</b></p>
+    </div>
+    <div class="card">
+      <h3>Aktif arızalar</h3>
+      <div id="fault-list" class="empty">Arıza yok.</div>
+      <div class="actions"><button class="btn danger" data-act="overhaul" data-confirm="overhaul">Motor revizyonu</button>
+        <span class="note small">Gömlek, piston, segman ve yataklar yenilenir; motor sağlığı %100 olur.</span></div>
+      <div class="actions"><button class="btn ghost" data-act="truck_reset" data-confirm="reset">Bu tırın değerlerini sıfırla</button>
+        <span class="note small">Başka bir tıra geçtiyseniz ya da baştan başlamak istiyorsanız; bu tırın tüm bakım kaydı silinir.</span></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h3><span>Servis ve olay kaydı</span> <span class="h-sub"><span>toplam bakım gideri</span> <span data-v="costs_total" data-g="1" data-cur="1"></span></span></h3>
+    <table class="data"><thead><tr><th>Oyun saati</th><th class="num">Km</th><th>Olay</th><th class="num">Tutar</th></tr></thead><tbody id="log-body"></tbody></table>
+  </div>
+</section>
+
+<!-- ============================ AYARLAR ============================ -->
+<section class="tab" id="tab-ayar">
+  <div class="card" style="margin-bottom:12px" id="mode-card">
+    <h3><span>Oyun modu</span> <span class="h-sub">tek ve çok oyunculu aynı uygulamada</span></h3>
+    <div class="form-grid">
+      <label for="s-gamemode">Mod seçimi</label>
+      <select id="s-gamemode" data-set="game_mode"><option value="auto">Otomatik — TruckersMP / Konvoy algılanınca Çok Oyunculu</option><option value="tek">Tek Oyunculu — tam gerçekçilik, gerekirse motor durdurulur</option><option value="cok">Çok Oyunculu — motor zorla durdurulmaz</option></select>
+      <div class="hint">Tek ve Çok Oyunculu modun ayarları ve tır bakım kayıtları ayrı tutulur: bu sayfada şu anki modun ayarlarını değiştirirsiniz. Dil ve oyun modu iki modda ortaktır. Çok Oyunculu modda sürüş modları varsayılan olarak kapalıdır.</div>
+      <span>Şu anki mod</span><b id="s-mode-now" class="no-i18n">—</b>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px" id="drive-card">
+    <h3><span>Sürüş modu</span> <span class="h-sub">oyun içi katman gaz pedalını seçilen moda göre ayarlar</span></h3>
+    <div class="drive-modes">
+      <button class="drive-btn" data-drive="eco"><b>ECO</b><span class="dm-desc no-i18n"></span></button>
+      <button class="drive-btn" data-drive="comfort"><b>COMFORT</b><span class="dm-desc no-i18n"></span></button>
+      <button class="drive-btn" data-drive="sport"><b>SPORT</b><span class="dm-desc no-i18n"></span></button>
+    </div>
+    <div class="form-grid" style="margin-top:12px">
+      <label for="s-drive">Sürüş modları</label><label class="chk"><input type="checkbox" id="s-drive" data-set="drive_modes"> <span>Açık (kapalıyken gaz pedalına hiç karışılmaz)</span></label>
+      <span>Mod değiştirme tuşu</span>
+      <span class="key-row"><kbd id="dm-key" class="no-i18n">—</kbd><button class="btn ghost" id="dm-bind">Tuş ata</button><button class="btn ghost" id="dm-clear">Kaldır</button></span>
+      <div class="hint">“Tuş ata”ya basıp istediğiniz klavye tuşuna ya da direksiyon / kumanda düğmesine basın (10 sn, Esc iptal). Oyunda bu tuş modu sırayla değiştirir: ECO → COMFORT → SPORT. Tuş yalnızca oyun penceresi öndeyken sayılır.</div>
+    </div>
+    <p class="note small">ECO: en fazla %75 güç, gaz yavaş artar, 85 km/h hız sınırı. COMFORT: yumuşak gaz tepkisi, güç sınırı yok. SPORT: keskin pedal, yarım pedalda ~%71 gaz. Oyun içi katman (1.8+) gaz pedalınıza değer ekleyip çıkararak çalışır; hız sabitleyici açıkken gaza karışmaz. Tek ve çok oyunculuda çalışır; Çok Oyunculu modda varsayılan olarak kapalıdır.</p>
+  </div>
+  <div class="card sp-only" style="margin-bottom:12px" id="film-card">
+    <h3><span>Çekim modu</span> <span class="h-sub">video çekimi için seçtiğiniz arızayı istediğiniz anda tetikleyin (yalnızca tek oyunculu)</span></h3>
+    <div class="form-grid">
+      <label for="s-film">Çekim modu</label><label class="chk"><input type="checkbox" id="s-film" data-set="film_mode"> <span>Açık (kısayol tuşu ve “Şimdi tetikle” çalışır)</span></label>
+      <label for="film-item">Tetiklenecek arıza</label><select id="film-item" class="no-i18n"></select>
+      <div class="hint no-i18n" id="film-desc"></div>
+      <span>Kısayol tuşu</span>
+      <span class="key-row"><kbd id="film-key" class="no-i18n">—</kbd><button class="btn ghost" id="film-bind">Tuş ata</button><button class="btn ghost" id="film-clear">Kaldır</button></span>
+      <div class="hint">Oyunda bu tuşa basınca seçili arıza hemen tetiklenir (çekim modu açıkken, yalnızca oyun penceresi öndeyken). Oyunun F tuşlarının çoğu dolu (F10 sürüş modunda): direksiyondaki boş bir düğmeyi ya da oyunda kullanılmayan bir tuşu seçin.</div>
+    </div>
+    <div class="actions">
+      <button class="btn danger" id="film-trigger">Şimdi tetikle</button>
+      <button class="btn ghost" id="film-repair">Hepsini onar</button>
+      <span class="note small no-i18n" id="film-state"></span>
+    </div>
+    <p class="note small">Tetiklenen arıza kendiliğinden çıkmış gibi işler: aynı uyarı, ikaz lambası, ses ve sonuçlar (hararet, akü boşalması, motorun durması…); Servis sekmesinden ya da oyun içi servis menüsünden (Alt+F8) aynı ücretle onarılır. Olay kaydında “elle” diye işaretlenir. “Hepsini onar” tüm arızaları ve lastik hasarını ücretsiz giderir; sıvı seviyeleri, akü şarjı ve sıcaklıklar değişmez. Sarı (dikkat) arızalar yalnızca uyarı düzeyi “Hepsi” iken öter.</p>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <h3>Oyun içi katman</h3>
+    <div class="form-grid">
+      <span>Durum</span><span id="ovl-status" class="note">—</span>
+      <span>Motoru durdurma yolu</span><span id="ovl-input" class="note">—</span>
+      <span>Kısayollar (oyunda)</span>
+      <span class="note" id="ovl-keys"></span>
+      <span>Katman tuşu</span>
+      <span class="key-row"><kbd id="ovl-key" class="no-i18n">F8</kbd><button class="btn ghost" id="ovl-bind">Tuş ata</button><button class="btn ghost" id="ovl-reset">Varsayılan (F8)</button></span>
+      <div class="hint">“Tuş ata”ya basıp klavyede bir tuşa basın (10 sn, Esc iptal). Katmanın bütün kısayolları bu tuşla çalışır: tek başına görünüm, Shift ile sayfa, Ctrl ile köşe, Alt ile servis menüsü. Sürüş modu ve çekim modu tuşlarıyla aynı olamaz.</div>
+      <label for="s-ovlpanel">Oyun içi panel</label>
+      <select id="s-ovlpanel" data-set="overlay_panel"><option value="auto">Otomatik — çakışma görülürse kurulmaz</option><option value="on">Açık — her zaman kur</option><option value="off">Kapalı</option></select>
+      <div class="hint">Otomatik: oyun klasöründe OptiScaler ya da DLSS 5 eklentisi varsa veya oyun bir önceki açılışta donup düzgün kapanmadıysa panel çizilmez; sürüş modları, motor durdurma ve lastik patlaması çalışmaya devam eder. Değişiklik oyun yeniden açılınca uygulanır.</div>    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px" id="rate-card">
+    <h3><span>Değer güncelleme sıklığı</span> <span class="h-sub">değerlerin ne sıklıkla yenileneceği</span></h3>
+    <div class="form-grid">
+      <label for="s-uiint">Uygulama penceresi</label>
+      <select id="s-uiint" data-set="ui_interval"><option value="0">Gerçek zamanlı (0 sn) — saniyede 20 kez</option><option value="0.1">0,1 sn — saniyede 10 kez</option><option value="0.25">0,25 sn — saniyede 4 kez (varsayılan)</option><option value="0.5">0,5 sn</option><option value="1">1 sn</option><option value="2">2 sn</option><option value="5">5 sn</option></select>
+      <label for="s-ovlint">Oyun içi katman</label>
+      <select id="s-ovlint" data-set="overlay_interval"><option value="0">Gerçek zamanlı (0 sn) — saniyede 20 kez</option><option value="0.1">0,1 sn — saniyede 10 kez (varsayılan)</option><option value="0.25">0,25 sn — saniyede 4 kez</option><option value="0.5">0,5 sn</option><option value="1">1 sn</option><option value="2">2 sn</option><option value="5">5 sn</option></select>
+      <div class="hint">Gerçek zamanlıda simülasyon saniyede 20 adım çalışır ve her adım hemen gösterilir; aralık uzadıkça bilgisayar daha az çalışır. Uyarılar, ikaz lambaları ve uyarı sesleri seçilen aralığı beklemez, hemen gelir. Pencere simge durumuna küçültülünce değerler yenilenmez (bilgisayar boşuna çalışmaz); pencere açılınca hemen güncellenir. Bu ayar Tek ve Çok Oyunculu modda ortaktır.</div>
+    </div>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>Genel</h3>
+      <div class="form-grid">
+        <label for="s-upd">Güncelleme</label><label class="chk"><input type="checkbox" id="s-upd" data-set="update_check"> <span>Açılışta yeni sürümü denetle</span></label>
+        <span id="upd-ver" class="no-i18n"></span><span class="key-row"><button class="btn ghost" id="upd-check">Şimdi denetle</button><button class="btn" id="upd-install" hidden>İndir ve kur</button></span>
+        <div class="hint no-i18n" id="upd-text"></div>
+        <label for="s-alerts">Uyarı düzeyi</label>
+        <select id="s-alerts" data-set="alert_level"><option value="minimal">Az — yalnızca kritik</option><option value="normal">Normal — kritik + dikkat</option><option value="all">Hepsi — bilgi mesajları dahil</option></select>
+        <div class="hint">Normal düzeyde ekran şeridi ve sesli ikaz yalnızca kritik durumlarda çıkar.</div>
+        <label for="s-hud">Oyun içi katman</label><label class="chk"><input type="checkbox" id="s-hud" data-set="hide_with_hud"> <span>Oyunda HUD gizlenince (F3) katman da gizlensin</span></label>
+        <label for="s-lamps">Gösterge lambaları</label><label class="chk"><input type="checkbox" id="s-lamps" data-set="telltales"> <span>Sorunlar katmanın alt ortasında ikaz lambası olarak yansın</span></label>
+        <div class="hint">Oyunun kendi gösterge panelindeki lambalar oyunun iç değerlerine bağlıdır ve dışarıdan yakılamaz; bu yüzden simülatörün ikazları katmanda gerçek gösterge gibi lamba olarak gösterilir. Sarı: dikkat/bakım, kırmızı: hemen müdahale.</div>
+        <label for="s-lamplvl">Gösterilecek lambalar</label>
+        <select id="s-lamplvl" data-set="lamp_level"><option value="onemsiz">Hepsi — önemsiz ve üstü</option><option value="onemli">Önemli ve üstü</option><option value="uyari">Uyarı ve üstü</option><option value="ciddi">Ciddi ve üstü — yalnızca kırmızı lambalar</option><option value="kritik">Yalnızca kritik — motoru hemen durdurun</option></select>
+        <div class="hint">Her lamba durumunun bir önem derecesi vardır; seçilen derece ve üstü yanar. Önemsiz: bilgi (ön ısıtma sürüyor, DPF rejenerasyonu). Önemli: bakım zamanı (yağ ve şanzıman yağı değişimi, debriyaj balatası, lastik dişi, akü ve motor sağlığı). Uyarı: sarı arızalar ve sınır değerler (ABS, marş, park freni çekilmedi, sıcaklık yüksek, seviye düşük, yakıt az). Ciddi: kırmızı lambalar (şarj yok, fren aşırı sıcak, hava basıncı düşük, park freni çekiliyken hareket, direksiyon desteği yok, şanzıman ya da debriyaj aşırı sıcak, lastik patladı). Kritik: STOP, yağ basıncı, hararet.</div>
+        <label for="s-sound">Sesli uyarı</label><label class="chk"><input type="checkbox" id="s-sound" data-set="sound"> <span>Yeni uyarıda ikaz sesi (her uyarıda bir kez)</span></label>
+        <label for="s-sndbrand">İkaz sesi</label><span class="key-row"><select id="s-sndbrand" data-set="sound_brand"><option value="auto">Otomatik — tırın markasına göre</option><option value="scania">Scania</option><option value="volvo">Volvo</option><option value="mercedes">Mercedes-Benz</option><option value="man">MAN</option><option value="daf">DAF</option><option value="renault">Renault</option><option value="iveco">Iveco</option><option value="skoda">Otomobil (gong)</option><option value="otobus">Otobüs</option><option value="genel">Genel</option></select><button class="btn ghost" id="snd-crit">Kritik sesi dinle</button><button class="btn ghost" id="snd-warn">Dikkat sesi dinle</button></span>
+        <div class="hint">Otomatikte ses tırın markasına göre değişir (Scania, Volvo, Mercedes-Benz, MAN, DAF, Renault, Iveco, otomobil, otobüs); isterseniz başka bir marka sesi seçebilirsiniz. Her uyarı bir kez öter; çalan ses yeni bir uyarıyla kesilmez. Dikkat uyarıları yalnızca uyarı düzeyi “Hepsi” iken öter. Kendi ses dosyanız için: sesler\ozel klasörü (README).</div>
+        <label for="s-curmode">Para birimi</label>
+        <select id="s-curmode" data-set="currency_mode"><option value="auto">Otomatik — oyunda seçili para birimi ve oyunun kuru</option><option value="manual">Elle</option></select>
+        <div class="hint" id="cur-info"></div>
+        <label for="s-cur" class="cur-manual">Simge</label><input type="text" id="s-cur" class="cur-manual" data-set="currency" maxlength="4" style="width:60px">
+        <label for="s-currate" class="cur-manual">Kur (1 € =)</label><input type="number" id="s-currate" class="cur-manual" data-set="currency_rate" step="0.0001" min="0.0001" style="width:110px">
+        <label for="s-fuel">Yakıt fiyatı (€ / litre)</label><input type="number" id="s-fuel" data-set="fuel_price" step="0.01" min="0" max="10">
+      </div>
+      <h3 style="margin-top:16px">Gerçekçilik</h3>
+      <div class="form-grid">
+        <label for="s-mpwatch" class="mp-only" hidden>İzleme modu</label>
+        <select id="s-mpwatch" data-set="mp_watch_mode" class="mp-only" hidden><option value="show">Sadece gösterme — değerler ve uyarılar, motora dokunulmaz</option><option value="full">Tam izleme — uyarılar + arızada motor durdurulur</option></select>
+        <div class="hint mp-only" hidden>Tam izlemede motor, trafikte tehlike yaratmamak için tır 10 km/h altına inince durdurulur; o zamana kadar uyarı verilir. Kontak ve ışıklar açık kalır.</div>
+        <span>Motor durdurma</span><span id="s-stop-txt">Akü bitince, motor kilitlenince vb. yalnızca motor durdurulur; kontak ve ekranlar açık kalır.</span>
+        <div class="hint sp-only">Çok oyunculu oturum (TruckersMP, Konvoy) algılanırsa motor güvenlik için durdurulmaz, yalnızca uyarı verilir; oyun modu Otomatik iken uygulama Çok Oyunculu moda kendisi geçer.</div>
+        <label for="s-key">Yedek motor tuşu</label><input type="text" id="s-key" data-set="engine_key" maxlength="1" style="width:50px">
+        <label for="s-faults">Rastgele parça arızaları</label><label class="chk"><input type="checkbox" id="s-faults" data-set="random_faults"> <span>Alternatör, termostat, fan, pompa, conta, şanzıman soğutucusu, debriyaj aktüatörü, direksiyon pompası, ABS sensörü, marş motoru (km'ye bağlı)</span></label>
+        <label for="s-blowout" class="sp-only">Lastik patlaması</label><label class="chk sp-only"><input type="checkbox" id="s-blowout" data-set="blowout_effect"> <span>Oyunda ani sürüklenme, kayma ve jant sürtmesi (fren ve direksiyona etki)</span></label>
+        <div class="hint sp-only">Yalnızca tek oyunculuda ve oyun içi katman kuruluyken çalışır; çok oyunculuda hiç uygulanmaz.</div>
+        <label for="s-adblue">AdBlue</label><label class="chk"><input type="checkbox" id="s-adblue" data-set="adblue_with_fuel"> <span>Oyunda yakıt alınca AdBlue da tamamlansın</span></label>
+        <label for="s-hotel">Uykuda park ısıtıcı/kliması</label><label class="chk"><input type="checkbox" id="s-hotel" data-set="hotel_load"> <span>Soğukta ısıtıcı, sıcakta klima aküden çeker</span></label>
+        <label for="s-temp">Hızlı iş tırları</label><label class="chk"><input type="checkbox" id="s-temp" data-set="reset_temp_trucks"> <span>Oyunun verdiği geçici tırın değerleri teslimatta sıfırlansın</span></label>
+        <label for="s-garage">Oyundaki serviste parça tamiri</label><label class="chk"><input type="checkbox" id="s-garage" data-set="repair_faults_on_game_repair"> <span>Oyunda servis noktasında tamir yaptırınca arızalı parçalar (alternatör, termostat, conta…) da onarılsın</span></label>
+        <div class="hint">Oyun yalnızca hasar varken tamire izin verir; oyun hasarı %0 ise Alt+F8 servis menüsünü kullanın.</div>
+        <label for="s-auto">Oyunda tamirde otomatik bakım</label><label class="chk"><input type="checkbox" id="s-auto" data-set="auto_service_on_repair"> <span>Oyunda serviste tamir olunca yağ + filtre + antifriz tamamlansın</span></label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>İklim</h3>
+      <div class="form-grid">
+        <label for="s-cmode">Mevsim kaynağı</label>
+        <select id="s-cmode" data-set="climate_mode"><option value="auto">Gerçek takvim (bugünün tarihi)</option><option value="month">Seçilen ay</option><option value="fixed">Sabit sıcaklık</option></select>
+        <label for="s-cmonth">Ay</label>
+        <select id="s-cmonth" data-set="climate_month"></select>
+        <label for="s-cfix">Sabit sıcaklık (°C)</label><input type="number" id="s-cfix" data-set="climate_fixed_c" step="1" min="-40" max="50">
+        <label for="s-cvar">Hava değişkenliği</label><label class="chk"><input type="checkbox" id="s-cvar" data-set="weather_variability"> <span>Günden güne ±3 °C sapma</span></label>
+      </div>
+      <p class="note small">Sıcaklık kamyonun gerçek enlem/boylamından (oyun koordinatlarından), oyun saatinden ve mevsimden hesaplanır.</p>
+      <div class="truck-only">
+      <h3 style="margin-top:16px">Bu kamyonun motoru</h3>
+      <div class="form-grid">
+        <label for="p-veh">Araç tipi</label>
+        <select id="p-veh"><option value="auto">Otomatik</option><option value="truck">Tır</option><option value="bus">Otobüs</option><option value="car">Otomobil</option></select>
+        <div class="hint"><span class="no-i18n" id="p-veh-det"></span> <span>Tek oyunculu otomobil ve otobüs modlarını (Togg, Passat…) oyun tır olarak bildirir: burada Otomobil ya da Otobüs seçin (12 V akü, otomobil yağı ve antifrizi, otomobil motorları).</span></div>
+        <span>Algılanan model</span><b data-v="engine_db.model_name" data-n="—"></b>
+        <label for="p-mode">Motor seçimi</label>
+        <select id="p-mode"><option value="auto">Otomatik (modelden + sürüşten algıla)</option><option value="manual">Elle</option></select>
+        <label for="p-engine">Motor</label>
+        <select id="p-engine"></select>
+        <div class="hint">Listeden seçmek otomatik algılamayı kapatır.</div>
+        <span>Sürüşten algılama</span><span id="p-detect" class="note"></span>
+        <span></span><div class="actions" style="margin:0"><button class="btn ghost" id="p-redetect">Yeniden algıla</button></div>
+      </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px" id="alerts-card">
+    <h3><span>Uyarılar ve ikaz lambaları</span> <span class="h-sub">her birini tek tek açıp kapatın; kapalı uyarı ne listede ne oyun içi katmanda görünür, ses de çıkarmaz</span></h3>
+    <div class="actions" style="margin:0 0 12px">
+      <button class="btn ghost" id="al-on">Hepsini aç</button>
+      <button class="btn ghost" id="al-off">Hepsini kapat</button>
+      <span class="note small no-i18n" id="al-sum"></span>
+    </div>
+    <div class="al-cols">
+      <div>
+        <div class="al-h">Uyarılar</div>
+        <div id="al-groups" class="no-i18n"><div class="empty">—</div></div>
+      </div>
+      <div>
+        <div class="al-h">İkaz lambaları (oyun içi katman)</div>
+        <div id="al-lamps" class="no-i18n"></div>
+      </div>
+    </div>
+    <p class="note small">Kapatılan uyarılar ve lambalar yalnızca gösterilmez: simülasyon (aşınma, arızalar, motor durdurma) aynen sürer. Uyarı düzeyi ve “Gösterilecek lambalar” süzgeci de ayrıca uygulanır; “Gösterge lambaları” kapalıysa hiçbir lamba yanmaz.</p>
+  </div>
+  <div class="card" style="margin-top:12px" id="rates-card">
+    <h3><span>Azalma hızları</span> <span class="h-sub">1× gerçekçi · 0,5× yarı hızda (iki kat uzun dayanır) · 5× beş kat hızlı · 0× hiç azalmaz</span></h3>
+    <div class="actions" style="margin:0 0 12px">
+      <button class="btn ghost" data-rate-preset="1">Gerçekçi (hepsi 1×)</button>
+      <button class="btn ghost" data-rate-preset="0.5">Kolay (genel 0,5×)</button>
+      <button class="btn ghost" data-rate-preset="0.25">Çok kolay (genel 0,25×)</button>
+      <button class="btn ghost" data-rate-preset="2">Zor (genel 2×)</button>
+      <button class="btn ghost" data-rate-preset="5">Çok zor (genel 5×)</button>
+    </div>
+    <div class="form-grid">
+        <label for="r-global"><b>Genel (tümü)</b></label><span class="rate-row"><input type="range" id="r-global" data-set="rate_global" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="global"></output></span>
+        <div class="hint">Tüm sistemlerin çarpanı; aşağıdaki her çarpanla çarpılır.</div>
+        <label for="r-oil">Motor yağı</label><span class="rate-row"><input type="range" id="r-oil" data-set="rate_oil" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="oil"></output></span>
+        <div class="hint">Yağ ömrü (TBN, is, oksidasyon, viskozite), değişim aralığı, yağ eksilmesi, filtre dolması</div>
+        <label for="r-coolant">Antifriz</label><span class="rate-row"><input type="range" id="r-coolant" data-set="rate_coolant" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="coolant"></output></span>
+        <div class="hint">İnhibitör tükenmesi, değişim aralığı (gün ve km), kireçlenme, buharlaşma</div>
+        <label for="r-battery">Akü sağlığı</label><span class="rate-row"><input type="range" id="r-battery" data-set="rate_battery" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="battery"></output></span>
+        <div class="hint">Yaşlanma, sülfatlaşma, kendi kendine boşalma</div>
+        <label for="r-drain">Akü boşalması</label><span class="rate-row"><input type="range" id="r-drain" data-set="rate_drain" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="drain"></output></span>
+        <div class="hint">Elektrik yüklerinin (ışık, ısıtıcı, silecek…) aküyü boşaltma hızı; şarj olma hızı değişmez</div>
+        <label for="r-tires">Lastikler</label><span class="rate-row"><input type="range" id="r-tires" data-set="rate_tires" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="tires"></output></span>
+        <div class="hint">Diş aşınması ve doğal basınç kaybı</div>
+        <label for="r-dpf">DPF</label><span class="rate-row"><input type="range" id="r-dpf" data-set="rate_dpf" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="dpf"></output></span>
+        <div class="hint">İs ve kül dolması</div>
+        <label for="r-adblue">AdBlue</label><span class="rate-row"><input type="range" id="r-adblue" data-set="rate_adblue" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="adblue"></output></span>
+        <div class="hint">AdBlue tüketimi</div>
+        <label for="r-engine">Motor aşınması</label><span class="rate-row"><input type="range" id="r-engine" data-set="rate_engine" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="engine"></output></span>
+        <div class="hint">Motor sağlığının normal kullanımda azalması</div>
+        <label for="r-transmission">Şanzıman ve debriyaj</label><span class="rate-row"><input type="range" id="r-transmission" data-set="rate_transmission" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="transmission"></output></span>
+        <div class="hint">Debriyaj balatası aşınması ve şanzıman yağının yaşlanması (değişim aralığı)</div>
+        <label for="r-faults">Arıza sıklığı</label><span class="rate-row"><input type="range" id="r-faults" data-set="rate_faults" min="0" max="5" step="0.05"><output class="no-i18n" data-rate="faults"></output></span>
+        <div class="hint">Rastgele parça arızaları ve yavaş patlaklar</div>
+    </div>
+    <p class="note small">Etkin hız = genel × sistem çarpanı. Yalnızca kendiliğinden azalan değerler etkilenir; hararet, yağsız sürüş, donma, ön ısıtmasız marş gibi kullanım hatalarının verdiği hasar, arızadan kaynaklanan kaçaklar ve akünün şarj olması değişmez. Değişim aralıkları ve bakım planı seçilen hıza göre uzar ya da kısalır.</p>
+  </div>
+  <div class="card truck-only" style="margin-top:12px">
+    <h3><span>Elle ayar</span> <span class="h-sub">kaydetmek motor seçimini “Elle” yapar</span></h3>
+    <div class="form-grid" id="spec-form">
+      <label for="p-name">Motor adı</label><input type="text" id="p-name" data-spec="name" style="width:320px">
+      <label for="p-hp">Güç (hp)</label><input type="number" id="p-hp" data-spec="power_hp" min="200" max="800" step="10">
+      <label for="p-nm">Tepe tork (Nm)</label><input type="number" id="p-nm" data-spec="torque_nm" min="0" max="4500" step="50">
+      <label for="p-rpm">Nominal güç devri (rpm)</label><input type="number" id="p-rpm" data-spec="rated_rpm" min="1300" max="2300" step="50">
+      <label for="p-disp">Motor hacmi (L)</label><input type="number" id="p-disp" data-spec="displacement_l" min="7" max="17" step="0.1">
+      <label for="p-oil">Yağ kapasitesi (L)</label><input type="number" id="p-oil" data-spec="oil_capacity_l" min="15" max="60" step="1">
+      <label for="p-cool">Soğutma suyu kapasitesi (L)</label><input type="number" id="p-cool" data-spec="coolant_capacity_l" min="25" max="120" step="1">
+      <label for="p-batt">Akü kapasitesi (Ah)</label><input type="number" id="p-batt" data-spec="battery_ah" min="40" max="300" step="5">
+      <label for="p-dpf">DPF</label><label class="chk"><input type="checkbox" id="p-dpf" data-spec="has_dpf"> <span>Euro VI (partikül filtresi var)</span></label>
+    </div>
+    <div class="actions"><button class="btn" id="spec-save">Elle değerleri kaydet</button></div>
+    <p class="note small">Telemetri motor gücünü vermez. Otomatik modda önce kamyon modelinin yaygın motoru seçilir; ardından tam gazda, sabit viteste ve 1000–1450 rpm arasında birkaç saniye (ör. dolu yükle yokuş çıkarken) sürdüğünüzde vites oranları, tekerlek yarıçapı, ivme, yol eğimi ve yük kütlesinden motor torku ölçülür ve modelin motorları içinden en yakını seçilir.</p>
+  </div>
+</section>
+</main>
+</div>
+<div id="toast"></div>
+<script src="i18n.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

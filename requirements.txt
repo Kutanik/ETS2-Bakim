@@ -1,0 +1,2 @@
+truck-telemetry==0.0.3
+pywebview>=5.0

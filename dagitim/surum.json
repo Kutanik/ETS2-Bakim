@@ -1,0 +1,11 @@
+{
+ "surum": "1.3.2",
+ "zip": "https://drive.usercontent.google.com/download?id=1me1YT22vMsmQCI2D-8mkPm8qt-e54IJf&export=download&confirm=t",
+ "sha256": "e7ba31464dbe9fed496ac5a775d6417b7de566c0bb4a775ab2a86bf33cca36bb",
+ "boyut": 13482839,
+ "notlar": {
+  "tr": "SPORT modunda gaz verip bırakırken oyunun takılması düzeltildi; değer güncelleme sıklığı ayarı (0 sn gerçek zamanlı dahil) ve daha az işlemci kullanan uygulama",
+  "en": "Fixed the game stuttering when pressing and releasing the throttle in SPORT; new value update rate setting (including 0 s real time) and a lighter app",
+  "de": "Behoben: Ruckeln des Spiels beim Gasgeben und Loslassen im SPORT-Modus; neue Einstellung der Aktualisierungsrate (inkl. 0 s Echtzeit) und eine sparsamere App"
+ }
+}

@@ -1,0 +1,10 @@
+ETS2 Güncellenmiş Gerçekçi Arıza İzleme Uygulaması (v1.2.1)
+
+İndir (13,5 MB): https://drive.google.com/file/d/1me1YT22vMsmQCI2D-8mkPm8qt-e54IJf/view?usp=sharing
+SHA-256: b02ddec814c94ed9070b9b14240886d520561b11bcc20c872c66d7516292dfc8
+VirusTotal: https://www.virustotal.com/gui/file/b02ddec814c94ed9070b9b14240886d520561b11bcc20c872c66d7516292dfc8
+(1/62: yalnızca Bkav'ın genel tespiti; Microsoft, Kaspersky, ESET, BitDefender vb. temiz)
+
+Kurulum: zip'e sağ tık → Özellikler → "Engellemeyi kaldır" → Tümünü ayıkla → INSTALL.bat
+Gereken: Windows 10/11 (64 bit), Steam'de Euro Truck Simulator 2 (oyun içi katman için DirectX 11)
+Bağımsız bir projedir; SCS Software ve TruckersMP ile bağlantısı yoktur. TruckersMP'de kullanım kendi sorumluluğunuzdadır.

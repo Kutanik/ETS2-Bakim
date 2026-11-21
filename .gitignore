@@ -1,0 +1,64 @@
+# ===== GitHub yüklemesi için eklenen kurallar =====
+# Gizli dosyalar: asla yükleme
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+key.properties
+keystore.properties
+admob.properties
+admob_kimlikleri*
+local.properties
+.env
+.env.*
+.dev.vars
+# Yedekler
+*.bak
+*.bak-*
+*.orig
+yedek/
+yedekler/
+_yedekler/
+# Derleme çıktıları, paketler, modeller
+build/
+.gradle/
+*.apk
+*.aab
+*.zip
+*.7z
+node_modules/
+*.gguf
+*.safetensors
+# IDE, işletim sistemi, günlükler
+.idea/
+*.iml
+.vscode/
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Çalışma zamanı verileri (WebView2 profili, durum dosyaları)
+EBWebView/
+/data/
+/data_mp/
+/data_demo/
+/data_demo_mp/
+# Derleme araçları ve ikili dosyalar
+/overlay/tools/mingw64/
+*.exe
+*.dll
+*.obj
+*.o
+*.lib
+*.a
+*.pdb
+*.ilk
+*.exp
